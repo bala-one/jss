@@ -23,8 +23,8 @@ jss create <your-app-name> <app-template-name>
 
 |Parameter |Description| Value type| 
 | --- | --- | --- | 
-|name| The name of the app to create.|`String`|
-|template| The template to create the app from; corresponds to folders in the [Official JSS repository](https://github.com/Sitecore/jss/tree/master/samples)|`String`|
+|`name`| The name of the app to create.|`String`|
+|`template`| The template to create the app from; corresponds to folders in the [Official JSS repository](https://github.com/Sitecore/jss/tree/master/samples)|`String`|
 
 **Optional parameters**
 
@@ -39,6 +39,7 @@ jss create <your-app-name> <app-template-name>
 |`--proxy`, `-p` |  Specifies a HTTP proxy when downloading templates. | A local directory path |  - |  all |
 |`--fetchWith` |  Specifies how the applicaiton should fetch Sitecore layout and dictionary data. |`REST` or `GraphQL` | `REST` | nextjs |
 |`--prerender` | Specifies the Next.js pre-rendering form for the primary `[[...path]].tsx` route. | `SSG` or `SSR` | `SSG` | nextjs |
+|`--empty` | Specifies the app should be created empty | - | `false` | nextjs |
 
 **Examples**
 ```

@@ -2,9 +2,7 @@ import React from 'react';
 import i18n from 'i18next';
 import Helmet from 'react-helmet';
 import { isEditorActive, withSitecoreContext } from '@sitecore-jss/sitecore-jss-react';
-import { dataFetcher } from './dataFetcher';
-import { getHostname } from './util';
-import { layoutService } from './lib/layout-service';
+import { layoutServiceFactory } from './lib/layout-service-factory';
 import config from './temp/config';
 import Layout from './Layout';
 import NotFound from './NotFound';
@@ -26,7 +24,7 @@ class RouteHandler extends React.Component {
       defaultLanguage: config.defaultLanguage,
     };
 
-    const routeData = this.extractRouteData();
+    const routeData = this.props.sitecoreContext;
 
     // route data from react-router - if route was resolved, it's not a 404
     if (props.route !== null) {
@@ -35,20 +33,15 @@ class RouteHandler extends React.Component {
 
     // if we have an initial SSR state, and that state doesn't have a valid route data,
     // then this is a 404 route.
-    if (routeData && (!routeData.sitecore || !routeData.sitecore.route)) {
+    if (routeData && !routeData.route) {
       this.state.notFound = true;
     }
 
     // if we have an SSR state, and that state has language data, set the current language
     // (this makes the language of content follow the Sitecore context language cookie)
     // note that a route-based language (i.e. /de-DE) will override this default; this is for home.
-    if (
-      routeData &&
-      routeData.sitecore &&
-      routeData.sitecore.context &&
-      routeData.sitecore.context.language
-    ) {
-      this.state.defaultLanguage = routeData.sitecore.context.language;
+    if (routeData && routeData.language) {
+      this.state.defaultLanguage = routeData.language;
     }
 
     // tell i18next to sync its current language with the route language
@@ -56,26 +49,11 @@ class RouteHandler extends React.Component {
   }
 
   componentDidMount() {
-    const routeData = this.extractRouteData();
-
     // if no existing routeData is present (from SSR), get Layout Service fetching the route data or ssr render complete
-    if (!routeData || this.props.ssrRenderComplete) {
+    if (!this.props.sitecoreContext || this.props.ssrRenderComplete) {
       this.updateRouteData();
     }
   }
-
-  extractRouteData = () => {
-    if (!this.props.sitecoreContext) return null;
-
-    const { route, ...context } = this.props.sitecoreContext;
-
-    return {
-      sitecore: {
-        route,
-        context,
-      },
-    };
-  };
 
   /**
    * Loads route data from Sitecore Layout Service into state.routeData
@@ -88,8 +66,11 @@ class RouteHandler extends React.Component {
 
     const language = this.props.route.match.params.lang || this.state.defaultLanguage;
 
+    // instantiate the dictionary service.
+    const layoutServiceInstance = layoutServiceFactory.create();
+
     // get the route data for the new route
-    layoutService.fetchLayoutData(sitecoreRoutePath, language).then((routeData) => {
+    layoutServiceInstance.fetchLayoutData(sitecoreRoutePath, language).then((routeData) => {
       if (routeData !== null && routeData.sitecore && routeData.sitecore.route) {
         // set the sitecore context data and push the new route
         this.props.updateSitecoreContext({
@@ -97,7 +78,10 @@ class RouteHandler extends React.Component {
           itemId: routeData.sitecore.route.itemId,
           ...routeData.sitecore.context,
         });
-        this.setState({ notFound: false });
+
+        if (this.state.notFound) {
+          this.setState({ notFound: false });
+        }
       } else {
         this.setState({ notFound: true }, () => {
           const context = routeData && routeData.sitecore ? routeData.sitecore.context : null;
@@ -141,7 +125,7 @@ class RouteHandler extends React.Component {
 
   render() {
     const { notFound } = this.state;
-    const routeData = this.extractRouteData();
+    const routeData = this.props.sitecoreContext;
 
     // no route data for the current route in Sitecore - show not found component.
     // Note: this is client-side only 404 handling. Server-side 404 handling is the responsibility
@@ -152,7 +136,7 @@ class RouteHandler extends React.Component {
           <Helmet>
             <title>{i18n.t('Page not found')}</title>
           </Helmet>
-          <NotFound context={routeData.sitecore && routeData.sitecore.context} />
+          <NotFound context={routeData} />
         </div>
       );
     }
@@ -164,7 +148,7 @@ class RouteHandler extends React.Component {
     }
 
     // Render the app's root structural layout
-    return <Layout route={routeData.sitecore.route} />;
+    return <Layout route={routeData.route} />;
   }
 }
 
